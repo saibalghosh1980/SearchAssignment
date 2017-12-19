@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: sample-config-client
+security:
+  basic:
+    enabled: false
