@@ -35,20 +35,30 @@ public class SearchBL {
 			// .forEach(p->log.info(p.getFileName()));
 
 			try {
-				fjpForSearchThroughFiles.submit(() -> filesToLookFor.parallelStream()
-						.filter(file -> isFileContainsWords(file.toFile(), wordsToMatch)).map(matchedFile -> {
-							FileSearchResultBO fileResult = new FileSearchResultBO();
-							fileResult.setFileName(matchedFile.toFile().getName());
-							fileResult.setFileLocation(matchedFile.toString());
-							return fileResult;
-						}).forEach(file -> {
-							searchResults.getMatchedFiles().add(file);
-
-						})).get();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				log.error(ExceptionUtils.getStackFrames(e));
-			} catch (ExecutionException e) {
+				/*
+				 * fjpForSearchThroughFiles.submit(() ->
+				 * filesToLookFor.parallelStream() .filter(file ->
+				 * isFileContainsWords(file.toFile(),
+				 * wordsToMatch)).map(matchedFile -> { FileSearchResultBO
+				 * fileResult = new FileSearchResultBO();
+				 * fileResult.setFileName(matchedFile.toFile().getName());
+				 * fileResult.setFileLocation(matchedFile.toString()); return
+				 * fileResult; }).forEach(file -> {
+				 * searchResults.getMatchedFiles().add(file);
+				 * 
+				 * })).get();
+				 */
+				List<FileSearchResultBO> matchedFiles = fjpForSearchThroughFiles
+						.submit(() -> filesToLookFor.parallelStream()
+								.filter(file -> isFileContainsWords(file.toFile(), wordsToMatch)).map(matchedFile -> {
+									FileSearchResultBO fileResult = new FileSearchResultBO();
+									fileResult.setFileName(matchedFile.toFile().getName());
+									fileResult.setFileLocation(matchedFile.toString());
+									return fileResult;
+								}).collect(Collectors.toList()))
+						.get();
+				searchResults.setMatchedFiles(matchedFiles);
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				log.error(ExceptionUtils.getStackFrames(e));
 			}
