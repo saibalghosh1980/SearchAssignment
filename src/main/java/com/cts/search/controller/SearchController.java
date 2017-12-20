@@ -1,8 +1,5 @@
 package com.cts.search.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,8 +20,9 @@ import com.cts.bo.ValidationBO;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 @RestController
 @RequestMapping("/search")
@@ -34,7 +32,7 @@ public class SearchController {
 	@Autowired
 	@Qualifier("springManagedSearchBL")
 	private SearchBL searchBusinessLogic;
-	
+
 	@CrossOrigin
 	@ApiOperation(value = "Search words in the files and return the matched files", response = SearchBO.class)
 	@ApiResponses(value = {
@@ -44,7 +42,8 @@ public class SearchController {
 	@RequestMapping(value = "/files", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_VALUE,
 			MediaType.APPLICATION_XML_VALUE })
 	public ResponseEntity<?> getFileSearchResults(
-			@RequestParam(value = "searchwords", required = false) String searchParameters) throws Exception {
+			@ApiParam(value = "Please send search words. Multiple words should be placed one after another deliminated by space", required = false) @RequestParam(value = "searchwords", required = false) String searchParameters)
+			throws Exception {
 
 		if (StringUtils.isBlank(searchParameters))
 			return new ResponseEntity<ValidationBO>(
@@ -53,14 +52,7 @@ public class SearchController {
 
 		String[] searchWords = searchParameters.replaceAll("\\s{2,}", " ").trim().split(" ");
 		searchBusinessLogic.getMatchedFiles(searchWords);
-		//FileSearchResultBO fileSearchResultBO = new FileSearchResultBO();
-		//fileSearchResultBO.setFileName("TestFile");
-		//fileSearchResultBO.setFileLocation("D:\\SKG");
-
-		//ArrayList<FileSearchResultBO> list = new ArrayList<>();
-		//list.add(fileSearchResultBO);
 		SearchBO<FileSearchResultBO> searchBO = searchBusinessLogic.getMatchedFiles(searchWords);
-		//searchBO.setMatchedFiles(list);
 
 		return new ResponseEntity<SearchBO<FileSearchResultBO>>(searchBO, HttpStatus.OK);
 	}

@@ -31,5 +31,8 @@ dependencies {
 	compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.6.1'		
 	// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
 	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
+	// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+	
 	testCompile('org.springframework.boot:spring-boot-starter-test')
 }
