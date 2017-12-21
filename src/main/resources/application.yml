@@ -6,7 +6,7 @@ security:
     enabled: false
 search-app:
   root-dir: D://TestData
-  recursive-dir-search: false
+  recursive-dir-search: true
   case-sensitive: true
   file-ext-to-search: txt,pdf
  

@@ -43,7 +43,7 @@ public class SearchController {
 			MediaType.APPLICATION_XML_VALUE })
 	public ResponseEntity<?> getFileSearchResults(
 			@ApiParam(value = "Please send search words. Multiple words should be placed one after another deliminated by space", required = false) @RequestParam(value = "searchwords", required = false) String searchParameters,
-			@ApiParam(value = "Please mention whether you would like to search all-sub directories. Allowed values are Y or y for yes and N or n for No", required = false, defaultValue = "N", allowableValues = "Y,N") @RequestParam(value = "recursivesearch", required = false) String recursiveSearch,
+			@ApiParam(value = "Please mention whether you would like to search all-sub directories. Allowed values are Y or y for yes and N or n for No", required = false, defaultValue = "Y", allowableValues = "Y,N") @RequestParam(value = "recursivesearch", required = false) String recursiveSearch,
 			@ApiParam(value = "Please mention whether you would like to search case sensitive. Allowed values are Y or y for yes and N or n for No", required = false, defaultValue = "Y", allowableValues = "Y,N") @RequestParam(value = "casesensitive", required = false) String caseSensitiveSearch)
 			throws Exception {
 
