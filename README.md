@@ -2,8 +2,7 @@
 Task to do
 =================================================================================================================
 
-Create a service that searches a configured directory and subdirectories for files containing a list of words that are provided to the service.
- 
+Create a service that searches a configured directory and subdirectories for files containing a list of words that are provided to the service. 
 The service should:
 •	Present a simple rest API to allow perform a search 
 •	Allow searching with multiple words 
