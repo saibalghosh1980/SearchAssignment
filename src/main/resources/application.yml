@@ -1,6 +1,12 @@
 spring:
   application:
-    name: sample-config-client
+    name: search-application
 security:
   basic:
     enabled: false
+search-app:
+  root-dir: D://TestData
+  recursive-dir-search: false
+  case-sensitive: true
+  file-ext-to-search: txt,pdf
+ 

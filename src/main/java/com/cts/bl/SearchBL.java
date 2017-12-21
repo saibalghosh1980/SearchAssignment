@@ -7,73 +7,102 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 
 import com.cts.bo.FileSearchResultBO;
 import com.cts.bo.SearchBO;
 
 @Service("springManagedSearchBL")
+@PropertySource("classpath:application.yml")
 public class SearchBL {
 	private static Logger log = Logger.getLogger(SearchBL.class);
+	@Value("${search-app.root-dir}")
+	private String rootDirectory;
+	@Value("${recursive-dir-search}")
+	private boolean recursiveDirectorySearch;
+	@Value("${case-sensitive}")
+	private boolean caseSensitiveSearch;
+	@Value("${file-ext-to-search}")
+	private String[] allowedFileExtensions;
 
-	public SearchBO<FileSearchResultBO> getMatchedFiles(String[] wordsToMatch) {
-		ForkJoinPool fjpForSearchThroughFiles = new ForkJoinPool(4 * 10);
-		SearchBO<FileSearchResultBO> searchResults = new SearchBO<FileSearchResultBO>();
-		try {
-			List<Path> filesToLookFor1 = Files.list(new File("D://TestData//1").toPath()).parallel()
-					.filter(Files::isRegularFile).filter(file -> file.toString().toLowerCase().endsWith(".txt"))
-					.collect(Collectors.toList());
-			List<Path> filesToLookFor = getAllFilesUnderDirectory(new File("D://TestData"));
-			// log.info("Total number of file--" + filesToLookFor.size());
-			// .forEach(p->log.info(p.getFileName()));
-
-			try {
-				/*
-				 * fjpForSearchThroughFiles.submit(() ->
-				 * filesToLookFor.parallelStream() .filter(file ->
-				 * isFileContainsWords(file.toFile(),
-				 * wordsToMatch)).map(matchedFile -> { FileSearchResultBO
-				 * fileResult = new FileSearchResultBO();
-				 * fileResult.setFileName(matchedFile.toFile().getName());
-				 * fileResult.setFileLocation(matchedFile.toString()); return
-				 * fileResult; }).forEach(file -> {
-				 * searchResults.getMatchedFiles().add(file);
-				 * 
-				 * })).get();
-				 */
-				List<FileSearchResultBO> matchedFiles = fjpForSearchThroughFiles
-						.submit(() -> filesToLookFor.parallelStream()
-								.filter(file -> isFileContainsWords(file.toFile(), wordsToMatch)).map(matchedFile -> {
-									FileSearchResultBO fileResult = new FileSearchResultBO();
-									fileResult.setFileName(matchedFile.toFile().getName());
-									fileResult.setFileLocation(matchedFile.toString());
-									return fileResult;
-								}).collect(Collectors.toList()))
-						.get();
-				searchResults.setMatchedFiles(matchedFiles);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				log.error(ExceptionUtils.getStackFrames(e));
-			}
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		searchResults.setTotalMatch(searchResults.getMatchedFiles().size());
-		return searchResults;
+	// -----------------------Setters for option which may be passed from front
+	// end--------------------------------
+	/**
+	 * Set the value for recursive directory search
+	 * 
+	 * @param recursiveDirectorySearch
+	 *            True if the directory and all it's subdirectory are searched
+	 */
+	public void setRecursiveDirectorySearch(boolean recursiveDirectorySearch) {
+		this.recursiveDirectorySearch = recursiveDirectorySearch;
 	}
 
+	/**
+	 * Set the value for case sensitive search
+	 * 
+	 * @param caseSensitiveSearch
+	 *            True if the search is case sensitive
+	 */
+	public void setCaseSensitiveSearch(boolean caseSensitiveSearch) {
+		this.caseSensitiveSearch = caseSensitiveSearch;
+	}
+
+	/**
+	 * This methods returned the files which contain the words which were
+	 * searched
+	 * 
+	 * @param wordsToMatch
+	 *            This are the words to match
+	 * @return Search Result containing number of files matched with details of
+	 *         the file like name and path
+	 * @throws Exception
+	 *             Throw an exception which is handled in the controller to show
+	 *             appropiate message.
+	 */
+	public SearchBO<FileSearchResultBO> getMatchedFiles(String[] wordsToMatch) throws Exception {
+		//Setting the pool size of threads for parallel processing of search
+		ForkJoinPool fjpForSearchThroughFiles = new ForkJoinPool(Runtime.getRuntime().availableProcessors() * 1000);
+		SearchBO<FileSearchResultBO> searchResults = new SearchBO<FileSearchResultBO>();
+		try {
+			List<Path> allFilesToSearch = getAllFilesUnderDirectory(new File(rootDirectory));
+			List<FileSearchResultBO> matchedFiles = fjpForSearchThroughFiles
+					.submit(() -> allFilesToSearch.parallelStream()
+							.filter(file -> isFileContainsWords(file.toFile(), wordsToMatch)).map(matchedFile -> {
+								FileSearchResultBO fileResult = new FileSearchResultBO();
+								fileResult.setFileName(matchedFile.toFile().getName());
+								fileResult.setFileLocation(matchedFile.toString());
+								return fileResult;
+							}).collect(Collectors.toList()))
+					.get();
+			searchResults.setMatchedFiles(matchedFiles);
+
+			searchResults.setTotalMatch(searchResults.getMatchedFiles().size());
+			return searchResults;
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			log.error(ExceptionUtils.getStackFrames(e));
+			throw e;
+		}
+	}
+
+	/**
+	 * This method searches a single file for the words which were searched for
+	 * 
+	 * @param fileToConsider
+	 *            File in which search will take place
+	 * @param wordsToMatch
+	 *            Words which will be searched
+	 * @return true or false
+	 */
 	private boolean isFileContainsWords(File fileToConsider, String[] wordsToMatch) {
-		// log.info("The name of the thread handling this is -->" +
-		// Thread.currentThread().getName());
 		boolean result = Arrays.stream(wordsToMatch).parallel().filter(p -> isFileContainsWord(fileToConsider, p))
 				.count() == wordsToMatch.length;
 		if (!result)
@@ -81,32 +110,65 @@ public class SearchBL {
 		return result;
 	}
 
+	/**
+	 * This method looks for a word in the file supplied
+	 * 
+	 * @param fileToConsider
+	 *            File in which search will take place
+	 * @param wordToMatch
+	 *            Word to search
+	 * @return Whether the word is found or not
+	 */
 	private boolean isFileContainsWord(File fileToConsider, String wordToMatch) {
-		// System.out.println(Thread.currentThread().getName()+"--> Sleeping");
 		try {
-			return Files.readAllLines(fileToConsider.toPath()).parallelStream()
-					.anyMatch(line -> line.indexOf(wordToMatch) != -1);
+			// Search within a text file
+			if (FilenameUtils.getExtension(fileToConsider.getName()).equalsIgnoreCase("txt"))
+				return Files.readAllLines(fileToConsider.toPath()).parallelStream().anyMatch(line -> {
+					if (caseSensitiveSearch)
+						return (line.indexOf(wordToMatch) != -1);
+					else
+						return line.toLowerCase().indexOf(wordToMatch.toLowerCase()) != 1;
+				});
+			else if (FilenameUtils.getExtension(fileToConsider.getName()).equalsIgnoreCase("pdf")) {
+				log.info("Implementation not done for pdf file");
+				return false;
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
+			log.error("We are skipping the processsing of this file--" + fileToConsider.getName()
+					+ ". The reason is as follows");
 			log.error(ExceptionUtils.getStackFrames(e));
 		}
 		return false;
 	}
 
+	/**
+	 * This method returns all the files under a directory
+	 * 
+	 * @param directory
+	 *            Directory to search
+	 * @return All the files under that directory (depends upon a parameter
+	 *         whether the search will be recursive or at that directory level
+	 *         only
+	 */
 	private List<Path> getAllFilesUnderDirectory(File directory) {
-		// log.info("Called -->" + directory.getName());
 		final List<Path> files = new ArrayList<>();
+
 		try {
 			files.addAll(Files.list(directory.toPath()).parallel().filter(Files::isRegularFile)
-					.filter(file -> file.toString().toLowerCase().endsWith(".txt")).collect(Collectors.toList()));
-			Files.list(directory.toPath()).filter(Files::isDirectory).forEach(d -> {
-				files.addAll(getAllFilesUnderDirectory(d.toFile()));
-
-			});
+					.filter(file -> Arrays.asList(allowedFileExtensions)
+							.contains(FilenameUtils.getExtension(file.toFile().getName().toLowerCase())))
+					.collect(Collectors.toList()));
+			if (recursiveDirectorySearch) // If recursive search then get all
+											// the files from sub-directories
+				Files.list(directory.toPath()).filter(Files::isDirectory).forEach(d -> {
+					files.addAll(getAllFilesUnderDirectory(d.toFile()));
+				});
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("We are skipping the processsing of this directory--" + directory.getName()
+					+ ". The reason is as follows");
+			log.error(ExceptionUtils.getStackFrames(e));
 		}
 		return files;
 

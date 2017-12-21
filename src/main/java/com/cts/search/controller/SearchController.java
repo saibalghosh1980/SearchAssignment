@@ -42,7 +42,9 @@ public class SearchController {
 	@RequestMapping(value = "/files", method = RequestMethod.GET, produces = { MediaType.APPLICATION_JSON_VALUE,
 			MediaType.APPLICATION_XML_VALUE })
 	public ResponseEntity<?> getFileSearchResults(
-			@ApiParam(value = "Please send search words. Multiple words should be placed one after another deliminated by space", required = false) @RequestParam(value = "searchwords", required = false) String searchParameters)
+			@ApiParam(value = "Please send search words. Multiple words should be placed one after another deliminated by space", required = false) @RequestParam(value = "searchwords", required = false) String searchParameters,
+			@ApiParam(value = "Please mention whether you would like to search all-sub directories. Allowed values are Y or y for yes and N or n for No", required = false, defaultValue = "N", allowableValues = "Y,N") @RequestParam(value = "recursivesearch", required = false) String recursiveSearch,
+			@ApiParam(value = "Please mention whether you would like to search case sensitive. Allowed values are Y or y for yes and N or n for No", required = false, defaultValue = "Y", allowableValues = "Y,N") @RequestParam(value = "casesensitive", required = false) String caseSensitiveSearch)
 			throws Exception {
 
 		if (StringUtils.isBlank(searchParameters))
@@ -51,10 +53,24 @@ public class SearchController {
 					HttpStatus.BAD_REQUEST);
 
 		String[] searchWords = searchParameters.replaceAll("\\s{2,}", " ").trim().split(" ");
-		searchBusinessLogic.getMatchedFiles(searchWords);
-		SearchBO<FileSearchResultBO> searchBO = searchBusinessLogic.getMatchedFiles(searchWords);
 
-		return new ResponseEntity<SearchBO<FileSearchResultBO>>(searchBO, HttpStatus.OK);
+		//Setting additional preferences for search
+		if (!StringUtils.isEmpty(recursiveSearch)
+				&& (recursiveSearch.trim().equalsIgnoreCase("Y") || recursiveSearch.trim().equalsIgnoreCase("N")))
+			searchBusinessLogic
+					.setRecursiveDirectorySearch(recursiveSearch.trim().equalsIgnoreCase("Y") ? true : false);
+		if (!StringUtils.isEmpty(caseSensitiveSearch) && (caseSensitiveSearch.trim().equalsIgnoreCase("Y")
+				|| caseSensitiveSearch.trim().equalsIgnoreCase("N")))
+			searchBusinessLogic.setCaseSensitiveSearch(caseSensitiveSearch.trim().equalsIgnoreCase("Y") ? true : false);
+
+		//searchBusinessLogic.getMatchedFiles(searchWords);
+		try {
+			SearchBO<FileSearchResultBO> searchBO = searchBusinessLogic.getMatchedFiles(searchWords);
+			return new ResponseEntity<SearchBO<FileSearchResultBO>>(searchBO, HttpStatus.OK);
+		} catch (Exception ex) {
+			return new ResponseEntity<ExceptionBO>(new ExceptionBO("", ex), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
 	}
 
 }
