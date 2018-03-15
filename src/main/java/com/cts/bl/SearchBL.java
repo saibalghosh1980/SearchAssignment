@@ -68,8 +68,8 @@ public class SearchBL {
 	 *             appropiate message.
 	 */
 	public SearchBO<FileSearchResultBO> getMatchedFiles(String[] wordsToMatch) throws Exception {
-		//Setting the pool size of threads for parallel processing of search
-		ForkJoinPool fjpForSearchThroughFiles = new ForkJoinPool(Runtime.getRuntime().availableProcessors() * 1000);
+		//Setting the pool size of threads for parallel processing of search. So all the words those being passed will be searched in parallel
+		ForkJoinPool fjpForSearchThroughFiles = new ForkJoinPool(Runtime.getRuntime().availableProcessors() * 1000);//Take thousand threads from each processor
 		SearchBO<FileSearchResultBO> searchResults = new SearchBO<FileSearchResultBO>();
 		try {
 			List<Path> allFilesToSearch = getAllFilesUnderDirectory(new File(rootDirectory));
@@ -122,12 +122,13 @@ public class SearchBL {
 	private boolean isFileContainsWord(File fileToConsider, String wordToMatch) {
 		try {
 			// Search within a text file
+			//All the lines are searched in parallel to find a match
 			if (FilenameUtils.getExtension(fileToConsider.getName()).equalsIgnoreCase("txt"))
 				return Files.readAllLines(fileToConsider.toPath()).parallelStream().anyMatch(line -> {
 					if (caseSensitiveSearch)
 						return (line.indexOf(wordToMatch) != -1);
 					else
-						return line.toLowerCase().indexOf(wordToMatch.toLowerCase()) != 1;
+						return line.toLowerCase().indexOf(wordToMatch.toLowerCase()) != -1;
 				});
 			else if (FilenameUtils.getExtension(fileToConsider.getName()).equalsIgnoreCase("pdf")) {
 				log.info("Implementation not done for pdf file");
